@@ -1,0 +1,13 @@
+services:
+  mcp-server-weibo:
+    image: ghcr.io/always1ov/mcp-server-weibo:latest
+    container_name: mcp-server-weibo
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4200}:4200"
+    environment:
+      - PORT=4200
+    # 如需从本地源码构建而非拉取 GHCR 镜像，取消下面注释并执行 `docker compose up --build`
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
