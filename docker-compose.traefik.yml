@@ -1,0 +1,43 @@
+# 接入已有 Traefik 反向代理的部署示例
+#
+# 前提：已有一个 Traefik 实例在运行，并创建了名为 traefik-net 的外部网络，
+# 且已配置好 cloudflare 证书解析器与 internal-only 白名单中间件。
+#
+# 用法：
+#   docker compose -f docker-compose.traefik.yml up -d
+#
+# 该服务不再自己映射端口，全部流量由 Traefik 通过域名转发。
+
+services:
+  mcp-server-weibo:
+    image: ghcr.io/always1ov/mcp-server-weibo:latest
+    container_name: mcp-server-weibo
+    restart: unless-stopped
+    environment:
+      - PORT=4200
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    labels:
+      - "traefik.enable=true"
+      # 路由：通过域名匹配，走 https 入口
+      - "traefik.http.routers.weibo.rule=Host(`weibo.always1ov.com`)"
+      - "traefik.http.routers.weibo.entrypoints=websecure"
+      - "traefik.http.routers.weibo.tls=true"
+      - "traefik.http.routers.weibo.tls.certresolver=cloudflare"
+      # 中间件：仅内网白名单 + 安全头/压缩组合
+      - "traefik.http.routers.weibo.middlewares=internal-only@docker,web-default@docker"
+      # 容器内服务监听端口
+      - "traefik.http.services.weibo.loadbalancer.server.port=4200"
+    networks:
+      - traefik-net
+
+networks:
+  traefik-net:
+    name: traefik-net
+    external: true
